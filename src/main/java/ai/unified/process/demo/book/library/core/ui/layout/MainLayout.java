@@ -1,34 +1,40 @@
 package ai.unified.process.demo.book.library.core.ui.layout;
 
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.Footer;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.RouterLink;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.server.menu.MenuConfiguration;
+import com.vaadin.flow.spring.security.AuthenticationContext;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import ai.unified.process.demo.book.library.core.ui.LoginView;
+import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Locale;
-
+@AnonymousAllowed
 @Layout
 public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
 	private final H2 viewTitle = new H2();
 
-	public MainLayout() {
+	private final transient AuthenticationContext authContext;
+
+	public MainLayout(AuthenticationContext authContext) {
+		this.authContext = authContext;
 		setPrimarySection(Section.DRAWER);
 		addDrawerContent();
 		addHeaderContent();
@@ -45,7 +51,35 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
 		viewTitle.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
 
-		addToNavbar(true, toggle, viewTitle);
+		var userMenu = createUserMenu();
+		var navbar = new HorizontalLayout(toggle, viewTitle, userMenu);
+		navbar.setWidthFull();
+		navbar.setAlignItems(FlexComponent.Alignment.CENTER);
+		navbar.expand(viewTitle);
+		navbar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
+
+		addToNavbar(true, navbar);
+	}
+
+	private HorizontalLayout createUserMenu() {
+		var layout = new HorizontalLayout();
+		layout.setAlignItems(FlexComponent.Alignment.CENTER);
+		layout.addClassNames(LumoUtility.Gap.SMALL);
+
+		authContext.getAuthenticatedUser(UserDetails.class).ifPresentOrElse(user -> {
+			var name = new Span(user.getUsername());
+			name.addClassNames(LumoUtility.FontWeight.MEDIUM);
+
+			var logout = new Button("Logout", _ -> authContext.logout());
+			logout.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+
+			layout.add(name, logout);
+		}, () -> {
+			var loginLink = new RouterLink("Login", LoginView.class);
+			loginLink.addClassNames(LumoUtility.FontWeight.MEDIUM);
+			layout.add(loginLink);
+		});
+		return layout;
 	}
 
 	private void addDrawerContent() {
@@ -56,41 +90,11 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
 		var scroller = new Scroller(createNavigation());
 
-		addToDrawer(header, scroller, createFooter());
+		addToDrawer(header, scroller);
 	}
 
 	private SideNav createNavigation() {
-		var nav = new SideNav();
-		return nav;
-	}
-
-	private Footer createFooter() {
-		var footer = new Footer();
-		var verticalLayout = new VerticalLayout();
-		footer.add(verticalLayout);
-
-		var locale = UI.getCurrent().getSession().getLocale();
-
-		var languageSwitchEn = new Button("EN");
-		languageSwitchEn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-		languageSwitchEn.setEnabled(!Locale.ENGLISH.getLanguage().equals(locale.getLanguage()));
-		languageSwitchEn.addClickListener(_ -> switchLanguage(Locale.ENGLISH.getLanguage()));
-
-		var languageSwitchDe = new Button("DE");
-		languageSwitchDe.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-		languageSwitchDe.setEnabled(!Locale.GERMAN.getLanguage().equals(locale.getLanguage()));
-		languageSwitchDe.addClickListener(_ -> switchLanguage(Locale.GERMAN.getLanguage()));
-
-		var languageLayout = new HorizontalLayout(languageSwitchEn, languageSwitchDe);
-		languageLayout.addClassNames(LumoUtility.Margin.SMALL, LumoUtility.Margin.Top.XLARGE);
-		verticalLayout.add(languageLayout);
-
-		return footer;
-	}
-
-	private void switchLanguage(String language) {
-		UI.getCurrent().getSession().setLocale(Locale.of(language, UI.getCurrent().getLocale().getCountry()));
-		UI.getCurrent().getPage().reload();
+		return new SideNav();
 	}
 
 	private String getCurrentPageTitle() {

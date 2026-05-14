@@ -24,6 +24,9 @@ Each step has a dedicated skill in the `aiup-core` and `aiup-vaadin-jooq` plugin
 walks through using them in order to grow the Book Library from a blank canvas into a working
 application.
 
+See [TUTORIAL.md](TUTORIAL.md) for the step-by-step walkthrough that builds **SimpleLibrary** on
+top of this starter project using the AIUP skills end-to-end.
+
 ## Technology Stack
 
 - [Vaadin Flow](https://vaadin.com) for the server-side UI
@@ -48,6 +51,28 @@ Then you can run the application with a database started by Testcontainers from 
 This class uses the [Spring Boot Testcontainers support](https://spring.io/blog/2023/06/23/improved-testcontainers-support-in-spring-boot-3-1/), introduced with Spring Boot 3.1.
 Thus, [Docker](https://www.docker.com) or [Testcontainers Cloud](https://testcontainers.com/cloud/) must be running on your local computer.
 
+## Pre-seeded Security
+
+Security is wired up out of the box so the tutorial can focus on business features. The first
+migration (`V001__create_app_user.sql`) creates the `app_user` table — the identity table
+used purely for authentication. Domain entities like `member` live in their own tables and
+link to `app_user` via a foreign key, which the tutorial introduces.
+
+`SecuritySeed` inserts two accounts on first start:
+
+| Username    | Password    | Role       |
+|-------------|-------------|------------|
+| `librarian` | `librarian` | LIBRARIAN  |
+| `alice`     | `alice`     | MEMBER     |
+
+Every routable view must declare its access rule with `@RolesAllowed("MEMBER")`,
+`@RolesAllowed("LIBRARIAN")`, or `@RolesAllowed({"MEMBER", "LIBRARIAN"})`. Use
+`@AnonymousAllowed` only on the login view. The current user is available via the
+`CurrentUser` Spring bean (`core/security/CurrentUser.java`), which exposes the
+`app_user.id`. Features that own a domain entity linked to `app_user` (e.g. `member`)
+look it up through that id. The architecture and rationale are documented in
+[`docs/architecture.md`](docs/architecture.md).
+
 ## Testing the Application
 
 There are two base classes:
@@ -70,7 +95,7 @@ Once the JAR file is built, you can run it using `java -jar target/book-library-
 ## Project Structure
 
 - `core/ui/layout/MainLayout.java` contains the navigation setup using [App Layout](https://vaadin.com/docs/components/app-layout).
-- `core` package holds cross-cutting concerns: configuration, shared UI components, i18n.
+- `core` package holds cross-cutting concerns: configuration, security, shared UI components.
 - Feature packages (e.g. `greeting`) follow a `ui` / `domain` split so each use case stays self-contained.
 - `src/main/resources/db/migration` contains the Flyway migrations that drive jOOQ code generation.
 - `src/main/resources/META-INF/resources` contains the custom CSS styles.

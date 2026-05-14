@@ -15,6 +15,10 @@ class ArchitectureTest {
 
 	public static final String UI_PACKAGE = "..ui..";
 
+	// Security configuration is the one place outside ..ui.. that may import com.vaadin..
+	// (VaadinSecurityConfigurer, AuthenticationContext, LoginForm).
+	public static final String SECURITY_PACKAGE = "..security..";
+
 	// Layers
 
 	private static final String UI_LAYER = "UI";
@@ -53,7 +57,7 @@ class ArchitectureTest {
 	@Test
 	void verify_that_only_the_ui_layer_is_using_vaadin() {
 		noClasses().that()
-			.resideOutsideOfPackages(UI_PACKAGE)
+			.resideOutsideOfPackages(UI_PACKAGE, SECURITY_PACKAGE)
 			.should()
 			.accessClassesThat()
 			.resideInAnyPackage("com.vaadin..")
